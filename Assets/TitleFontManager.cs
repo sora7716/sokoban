@@ -15,9 +15,13 @@ public class TitleFontManager : MonoBehaviour
         {
             titleFont.text = "Sokoban";
         }
-        else
+        else if (sceneName == "End")
         {
             titleFont.text = "GameClear";
+        }
+        else
+        {
+            titleFont.text = "StageClear";
         }
         while (true)
         {
@@ -36,6 +40,10 @@ public class TitleFontManager : MonoBehaviour
         if (sceneName == "Title")  // シーン1の名前を確認します
         {
             titleFont.color = new Color(1.0f, 0.0f, 0.0f, 0.0f);
+        }
+        else if(sceneName=="End")
+        {
+            titleFont.color = new Color(0.5f, 0.0f, 0.5f, 0.0f);
         }
         else
         {
