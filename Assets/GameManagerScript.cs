@@ -1,34 +1,78 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
+using UnityEngine.UIElements;
 
 public class GameManagerScript : MonoBehaviour
 {
-    public GameObject playerPrefab;
-    public GameObject boxPrefab;
+    public GameObject playerPrefab;//プレイヤー
+    public GameObject moveBoxPrefab;//動かすボックス
+    public GameObject boxPrefab;//動かないボックス
     /// <summary>荷物を格納する場所のプレハブ</summary>
     public GameObject storePrefab;
     /// <summary>クリアーしたことを示すテキストの GameObject</summary>
     public GameObject clearText;
-    int[,] map; // マップの元データ（数字）
+    int[,,] map; // マップの元データ（数字）
     GameObject[,] field;    // map を元にしたオブジェクトの格納庫
+    public GameObject particlePrefab;//パーティクル
 
+    //ステージのナンバー
+    [SerializeField]
+    private int stageNumber;
+    //シーンを切り替える用の時間
+    public float switchTime = 0.0f;
+
+    /// <summary>
+    /// ステージのリセット
+    /// </summary>
+    private void Reset()
+    {
+        if (stageNumber == 0)
+        {
+            SceneManager.LoadScene("Title");
+        }
+        else if (stageNumber == 1)
+        {
+            SceneManager.LoadScene("GameScene1");
+        }
+        else if (stageNumber == 2)
+        {
+            SceneManager.LoadScene("GameScene2");
+        }
+    }
+
+    /// <summary>
+    ///パーティクルの生成
+    /// </summary>
+    /// <param name="moveTo">生成場所</param>
+    /// <param name="direction">どの方向に出てほしいか</param>
+    void ParticleSpawn(Vector2 moveTo,Vector2 direction)
+    {
+        for(int i = 0; i < 10; i++)
+        {
+            GameObject instance =
+                      Instantiate(particlePrefab,
+                      new Vector3(moveTo.x+(1.0f*direction.x), -1 * moveTo.y+(1.0f*direction.y), 0),
+                      Quaternion.identity);
+        }
+    }
     bool IsClear()
     {
         // 格納場所一覧のデータを作る
         List<Vector2Int> goals = new List<Vector2Int>();
 
-        for (int y = 0; y < map.GetLength(0); y++)
+        for (int y = 0; y < map.GetLength(1); y++)
         {
-            for (int x = 0; x < map.GetLength(1); x++)
+            for (int x = 0; x < map.GetLength(2); x++)
             {
-                if (map[y, x] == 3)
+                if (map[stageNumber,y, x] == 3)
                 {
                     goals.Add(new Vector2Int(x, y));
                 }   // 格納場所である場合
             }
         }
-
+        
         // 格納場所に箱があるか調べる
         for (int i = 0; i < goals.Count; i++)
         {
@@ -50,19 +94,28 @@ public class GameManagerScript : MonoBehaviour
     /// <param name="moveFrom">移動元インデックス</param>
     /// <param name="moveTo">移動先インデックス</param>
     /// <returns></returns>
-    bool MoveNumber(Vector2Int moveFrom, Vector2Int moveTo)
+    bool MoveNumber(Vector2Int moveFrom, Vector2Int moveTo,Vector2 direction)
     {
         // 動けない場合は false を返す
         if (moveTo.y < 0 || moveTo.y >= field.GetLength(0))
+        {
             return false;
+        }
         if (moveTo.x < 0 || moveTo.x >= field.GetLength(1))
+        {
             return false;
+        }
+
+        if (map[stageNumber, moveTo.y, moveTo.x] == 4)
+        {
+            return false;
+        }
 
         if (field[moveTo.y, moveTo.x] != null
             && field[moveTo.y, moveTo.x].tag == "Box")
         {
             Vector2Int velocity = moveTo - moveFrom;    // 移動方向を計算する
-            bool success = MoveNumber(moveTo, moveTo + velocity);
+            bool success = MoveNumber(moveTo, moveTo + velocity,direction);
             if (!success)
                 return false;
         }   // 移動先に箱がいた場合の処理
@@ -77,7 +130,7 @@ public class GameManagerScript : MonoBehaviour
         Move move = field[moveTo.y, moveTo.x].GetComponent<Move>();
         // Moveコンポーネントに対して、動けと命令する
         move.MoveTo(new Vector3(moveTo.x, -1 * moveTo.y, 0));
-
+        ParticleSpawn(moveTo,direction);
         return true;
     }
 
@@ -106,26 +159,64 @@ public class GameManagerScript : MonoBehaviour
 
     void Start()
     {
-        clearText.SetActive(false);
-
-        map = new int[,]
+        //クリアフォントを非表示
+        //clearText.SetActive(false);
+        map = new int[,,]
         {
-            { 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 3 },
-            { 3, 0, 0, 0, 0, 3, 2, 2, 1, 0, 0, 0, 0, 0 },
-            { 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 2, 0, 0, 0 },
+          {
+            { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, },
+            { 4, 4, 4, 4, 4, 4, 4, 4, 4, 0, 4, 4, 4, 4, },
+            { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, },
+            { 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 4, 4, 4, 4, },
+            { 4, 4, 4, 4, 0, 0, 0 ,0, 0, 0, 4, 4, 4, 4, },
+            { 4, 4, 4, 4, 1, 0, 2, 0, 3, 0, 4, 4, 4, 4, },
+            { 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 4, 4, 4, 4, },
+            { 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 4, 4, 4, 4, },
+            { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, },
+            { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, },
+          
+           
+          },
+
+          {
+            { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, },
+            { 4, 4, 4, 4, 4, 4, 4, 4, 4, 0, 4, 4, 4, 4, },
+            { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, },
+            { 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 4, 4, 4, 4, },
+            { 4, 4, 4, 4, 0, 0, 0 ,0, 0, 0, 4, 4, 4, 4, },
+            { 4, 4, 4, 4, 0, 1, 0, 2, 3, 0, 4, 4, 4, 4, },
+            { 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 4, 4, 4, 4, },
+            { 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 4, 4, 4, 4, },
+            { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, },
+            { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, },
+
+          },
+          {
+            { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, },
+            { 4, 4, 4, 4, 4, 4, 4, 4, 4, 0, 4, 4, 4, 4, },
+            { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, },
+            { 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 4, 4, 4, 4, },
+            { 4, 4, 4, 4, 0, 0, 0 ,0, 0, 0, 4, 4, 4, 4, },
+            { 4, 4, 4, 4, 0, 1, 0, 2, 3, 0, 4, 4, 4, 4, },
+            { 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 4, 4, 4, 4, },
+            { 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 4, 4, 4, 4, },
+            { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, },
+            { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, },
+
+          },
         };  // 0: 何もない, 1: プレイヤー, 2: 箱
 
         field = new GameObject
         [
-            map.GetLength(0),
-            map.GetLength(1)
+            map.GetLength(1),
+            map.GetLength(2)
         ];  // map の行列と同じ升目の配列をもうひとつ作った
 
-        for (int y = 0; y < map.GetLength(0); y++)
+        for (int y = 0; y < map.GetLength(1); y++)
         {
-            for (int x = 0; x < map.GetLength(1); x++)
+            for (int x = 0; x < map.GetLength(2); x++)
             {
-                if (map[y, x] == 1)
+                if (map[stageNumber, y, x] == 1)
                 {
                     GameObject instance =
                         Instantiate(playerPrefab,
@@ -134,61 +225,102 @@ public class GameManagerScript : MonoBehaviour
                     field[y, x] = instance; // プレイヤーを保存しておく
                     // break;  // プレイヤーは１つだけなので抜ける
                 }   // プレイヤーを出す
-                else if (map[y, x] == 2)
+                else if (map[stageNumber, y, x] == 2)
                 {
                     GameObject instance =
-                        Instantiate(boxPrefab,
+                        Instantiate(moveBoxPrefab,
                         new Vector3(x, -1 * y, 0),
                         Quaternion.identity);
                     field[y, x] = instance; // 箱を保存しておく
                 }   // 箱を出す
-                else if (map[y, x] == 3)
+                else if (map[stageNumber, y, x] == 3)
                 {
                     GameObject instance =
                         Instantiate(storePrefab,
                         new Vector3(x, -1 * y, 0),
                         Quaternion.identity);
                 }   // 格納場所を出す
+                else if (map[stageNumber, y, x] == 4)
+                {
+                    Instantiate(boxPrefab,
+                        new Vector3(x, -1 * y, 0),
+                        Quaternion.identity);
+                }
+                Instantiate(boxPrefab,
+                        new Vector3(x, -1 * y, 1),
+                        Quaternion.identity);
             }
         }
     }
 
-    void Update()
+
+    void Clear()
     {
-        if (Input.GetKeyDown(KeyCode.RightArrow))
+        if (IsClear())
         {
-            var playerPosition = GetPlayerIndex();
-            MoveNumber(playerPosition, new Vector2Int(playerPosition.x + 1, playerPosition.y));    // →に移動
-
-            if (IsClear())
-                clearText.SetActive(true);
-        }
-
-        if (Input.GetKeyDown(KeyCode.LeftArrow))
-        {
-            var playerPosition = GetPlayerIndex();
-            MoveNumber(playerPosition, new Vector2Int(playerPosition.x - 1, playerPosition.y));    // ←に移動
-
-            if (IsClear())
-                clearText.SetActive(true);
-        }
-
-        if (Input.GetKeyDown(KeyCode.UpArrow))
-        {
-            var playerPosition = GetPlayerIndex();
-            MoveNumber(playerPosition, new Vector2Int(playerPosition.x, playerPosition.y - 1));    // ↑に移動
-
-            if (IsClear())
-                clearText.SetActive(true);
-        }
-
-        if (Input.GetKeyDown(KeyCode.DownArrow))
-        {
-            var playerPosition = GetPlayerIndex();
-            MoveNumber(playerPosition, new Vector2Int(playerPosition.x, playerPosition.y + 1));    // ↓に移動
-
-            if (IsClear())
-                clearText.SetActive(true);
+            clearText.SetActive(true);
+            switchTime += Time.deltaTime;
         }
     }
+
+    void SceneChange()
+    {
+       
+        if (switchTime >= 10.0f)
+        {
+            if (stageNumber == 0)
+            {
+                SceneManager.LoadScene("GameScene1");
+                switchTime = 0.0f;
+            }
+            else if (stageNumber == 1)
+            {
+                SceneManager.LoadScene("GameScene2");
+                switchTime = 0.0f;
+            }
+        }
+       
+    }
+    void Update()
+    {
+        Clear();
+        SceneChange();
+        if (switchTime <= 0.0f)
+        {
+            if (Input.GetKeyDown(KeyCode.RightArrow))
+            {
+                var playerPosition = GetPlayerIndex();
+                MoveNumber(playerPosition, new Vector2Int(playerPosition.x + 1, playerPosition.y), new Vector2(-1, 0));    // →に移動
+
+            }
+
+            if (Input.GetKeyDown(KeyCode.LeftArrow))
+            {
+                var playerPosition = GetPlayerIndex();
+                MoveNumber(playerPosition, new Vector2Int(playerPosition.x - 1, playerPosition.y), new Vector2(1, 0));    // ←に移動
+
+            }
+
+            if (Input.GetKeyDown(KeyCode.UpArrow))
+            {
+                var playerPosition = GetPlayerIndex();
+                MoveNumber(playerPosition, new Vector2Int(playerPosition.x, playerPosition.y - 1), new Vector2(0, -1));    // ↑に移動
+
+            }
+
+            if (Input.GetKeyDown(KeyCode.DownArrow))
+            {
+                var playerPosition = GetPlayerIndex();
+                MoveNumber(playerPosition, new Vector2Int(playerPosition.x, playerPosition.y + 1), new Vector2(0, 1));    // ↓に移動
+
+            }
+
+            if (Input.GetKeyDown(KeyCode.R))
+            {
+                Reset();
+            }
+        }
+
+    }
+
 }
