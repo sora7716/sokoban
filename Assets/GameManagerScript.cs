@@ -22,7 +22,10 @@ public class GameManagerScript : MonoBehaviour
     private int stageNumber;
     //シーンを切り替える用の時間
     float switchTime = 0.0f;
-    public float setTime=3.0f;
+    public float setTime=3.0f;//シーン切り替えをしてほしい時間
+    public AudioSource audioSource;
+    public AudioClip walkSE;
+    public AudioClip resetSE;
 
     /// <summary>
     /// ステージのリセット
@@ -403,33 +406,34 @@ public class GameManagerScript : MonoBehaviour
             {
                 var playerPosition = GetPlayerIndex();
                 MoveNumber(playerPosition, new Vector2Int(playerPosition.x + 1, playerPosition.y), new Vector2(-1, 0));    // →に移動
-
+                audioSource.PlayOneShot(walkSE);
             }
 
             if (Input.GetKeyDown(KeyCode.LeftArrow))
             {
                 var playerPosition = GetPlayerIndex();
                 MoveNumber(playerPosition, new Vector2Int(playerPosition.x - 1, playerPosition.y), new Vector2(1, 0));    // ←に移動
-
+                audioSource.PlayOneShot(walkSE);
             }
 
             if (Input.GetKeyDown(KeyCode.UpArrow))
             {
                 var playerPosition = GetPlayerIndex();
                 MoveNumber(playerPosition, new Vector2Int(playerPosition.x, playerPosition.y - 1), new Vector2(0, -1));    // ↑に移動
-
+                audioSource.PlayOneShot(walkSE);
             }
 
             if (Input.GetKeyDown(KeyCode.DownArrow))
             {
                 var playerPosition = GetPlayerIndex();
                 MoveNumber(playerPosition, new Vector2Int(playerPosition.x, playerPosition.y + 1), new Vector2(0, 1));    // ↓に移動
-
+                audioSource.PlayOneShot(walkSE);
             }
 
             if (Input.GetKeyDown(KeyCode.R))
             {
                 Reset();
+                audioSource.PlayOneShot(resetSE);
             }
         }
 
